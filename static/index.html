@@ -1,0 +1,187 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>CRYPTIQ — Password Cracking &amp; Entropy Simulator</title>
+<meta name="description" content="Educational, client-side password auditor: entropy, attack simulations, generator and breach check.">
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+<a class="skip" href="#analyzer">Skip to analyzer</a>
+<header class="nav">
+  <a class="logo" href="#top" aria-label="CRYPTIQ home">
+    <svg width="28" height="28" viewBox="0 0 32 32" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M16 3l11 4v8c0 7-5 12-11 14C10 27 5 22 5 15V7z"/><rect x="11.5" y="14" width="9" height="7" rx="1.5"/><path d="M13.5 14v-2a2.5 2.5 0 015 0v2"/></svg>
+    CRYPTIQ
+  </a>
+  <button class="burger" id="burger" aria-expanded="false" aria-controls="menu" aria-label="Toggle menu">Menu</button>
+  <nav id="menu">
+    <a href="#analyzer">Analyzer</a><a href="#lab">Attack Lab</a><a href="#arena">Battle Arena</a><a href="#generator">Password Generator</a><a href="#quiz">Challenge</a><a href="#guide">Security Guide</a>
+  </nav>
+  <span class="chip ok" title="Analysis runs only in your browser">Private: nothing leaves this page</span>
+</header>
+
+<main id="top">
+<section class="hero">
+  <div>
+    <h1>How Strong Is Your Password, Really?</h1>
+    <p class="lead">Explore entropy, simulate cracking scenarios, and understand the science behind password security.</p>
+    <a class="btn primary" href="#analyzer">Analyze a password</a>
+    <ul class="stats">
+      <li><b>Entropy</b>Measures search-space size in bits</li>
+      <li><b>4 attack models</b>Online, offline, dictionary, reuse</li>
+      <li><b>0 bytes sent</b>Unless you run the breach check</li>
+    </ul>
+  </div>
+  <svg class="viz" viewBox="0 0 300 300" aria-hidden="true">
+    <defs><linearGradient id="g" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#22d3ee"/><stop offset="1" stop-color="#8b5cf6"/></linearGradient></defs>
+    <circle class="r1" cx="150" cy="150" r="130" fill="none" stroke="url(#g)" stroke-width="2" stroke-dasharray="6 10"/>
+    <circle class="r2" cx="150" cy="150" r="95" fill="none" stroke="#34d399" stroke-width="2" stroke-dasharray="40 14"/>
+    <path d="M150 85l50 18v38c0 32-22 54-50 64-28-10-50-32-50-64v-38z" fill="rgba(34,211,238,.08)" stroke="url(#g)" stroke-width="3"/>
+    <rect x="132" y="140" width="36" height="28" rx="5" fill="none" stroke="#e6ecff" stroke-width="3"/>
+    <path d="M139 140v-8a11 11 0 0122 0v8" fill="none" stroke="#e6ecff" stroke-width="3"/>
+  </svg>
+</section>
+
+<section id="analyzer" class="sec">
+  <h2>Password analyzer</h2>
+  <div class="card">
+    <label for="pw">Type a password to analyze (kept in memory only)</label>
+    <div class="row">
+      <input id="pw" type="password" autocomplete="off" autocapitalize="off" spellcheck="false" placeholder="Try Summer2024!">
+      <button class="btn" id="toggle" type="button" aria-pressed="false">Show</button>
+      <button class="btn" id="clear" type="button">Clear</button>
+    </div>
+    <div class="meter" role="progressbar" aria-label="Strength" aria-valuemin="0" aria-valuemax="100" id="meterBox"><i id="meter"></i></div>
+    <p class="verdict" id="verdict" aria-live="polite">Start typing to see a live analysis.</p>
+    <div class="flags" id="flags" aria-label="Detected weaknesses"></div>
+    <div class="grid4">
+      <div class="stat"><span>Length</span><b id="sLen">0</b></div>
+      <div class="stat"><span>Character types</span><b id="sCats">–</b></div>
+      <div class="stat"><span>Alphabet-model bits</span><b id="sRaw">0</b></div>
+      <div class="stat"><span>Pattern-adjusted bits</span><b id="sAdj">0</b></div>
+    </div>
+    <h3>Improvement coach</h3>
+    <ul class="tips" id="tips"><li>Suggestions will appear here based on your password.</li></ul>
+  </div>
+
+  <div class="card">
+    <h3>Entropy scale</h3>
+    <div class="scale"><i id="scaleFill"></i><span style="left:21.9%">28</span><span style="left:46.9%">60</span><span style="left:62.5%">80</span><span style="left:100%">128</span></div>
+    <p><b id="eBits">0</b> bits ≈ 2<sup id="eExp">0</sup> possible guesses to search the whole space.</p>
+    <p class="formula">H = L × log₂(N) &nbsp; (L = length, N = alphabet size: 26 lowercase, 26 uppercase, 10 digits, ~33 symbols)</p>
+    <p class="note">Entropy is a measure of unpredictability: each extra bit doubles the number of guesses needed. This formula is valid only if every character is chosen independently and uniformly at random. Human-made passwords are not, so the “pattern-adjusted” figure removes characters that continue a repeat or sequence (e.g. “aaa”, “123”), and common words are scored by their rank in a small sample list. Both are teaching heuristics, not measurements. Theoretical search space is not the same as real guess difficulty, and entropy alone never guarantees safety.</p>
+  </div>
+
+  <div class="card">
+    <h3>Search-space visualizer (log scale)</h3>
+    <div id="viz" class="chart" aria-live="polite"></div>
+    <p class="note"><b>Theoretical search space</b> is 2<sup>H</sup> with H = L × log₂(N). That is only valid when every character is chosen independently and uniformly at random, as a generator does. <b>Guessability</b> is how many guesses a smart attacker needs, which is far lower for human-made passwords. Bar length is proportional to the number of bits (log scale), so each bar step to the right multiplies the guess count. The two reference bars are random passwords for comparison.</p>
+  </div>
+
+  <div class="card">
+    <h3>Attack simulation (fixed speeds)</h3>
+    <p class="note">Four reference scenarios, independent of the Attack Lab sliders: online rate-limited (5/min), online API (1,000/s), offline fast hash on GPUs (100 billion/s) and offline slow hash such as bcrypt or Argon2 (10,000/s). Times are average (half the effective search space), illustrative only.</p>
+    <div id="fixed" class="results" aria-live="polite"></div>
+  </div>
+
+  <div class="card">
+    <h3>Breach check (optional)</h3>
+    <p class="note">Your browser hashes the password with SHA-1 locally and sends only the first 5 hex characters to the Have I Been Pwned range API (k-anonymity). The password and full hash never leave your device. Your IP address and the request itself are still visible to the network and the service. Nothing is sent until you press the button.</p>
+    <button class="btn" id="breachBtn" type="button">Check this password</button>
+    <p class="verdict" id="breachOut" aria-live="polite"></p>
+  </div>
+</section>
+
+<section id="lab" class="sec">
+  <h2>Attack lab</h2>
+  <p class="note">Illustrative models using the analyzed password. Real speeds vary widely with hash algorithm, hardware, password patterns and attacker strategy. Times are educational estimates, not promises.</p>
+  <div class="card">
+    <div class="grid3">
+      <div><label for="onRate">Online: attempts per hour</label><input id="onRate" type="number" min="1" value="100"></div>
+      <div><label for="onLock">Online: attempts before lockout (0 = none)</label><input id="onLock" type="number" min="0" value="5"></div>
+      <div><label for="offPreset">Offline hash type</label>
+        <select id="offPreset"><option value="4">Slow hash (bcrypt-like, 10⁴/s)</option><option value="7">Moderate (10⁷/s)</option><option value="10" selected>Fast hash on GPUs (10¹⁰/s)</option><option value="12">Large GPU cluster (10¹²/s)</option></select></div>
+      <div><label for="offExp">Offline guesses/sec: <b id="offLabel">10¹⁰</b></label><input id="offExp" type="range" min="2" max="13" value="10"></div>
+      <div><label for="dictSize">Dictionary size (guesses incl. rules)</label><input id="dictSize" type="number" min="1" value="1000000000"></div>
+      <div class="chk"><label><input id="reuse" type="checkbox"> I reuse this password on other sites</label></div>
+    </div>
+    <button class="btn" id="resetLab" type="button">Reset to defaults</button>
+  </div>
+  <p class="note"><b>How to read the results:</b> "average" assumes the password is found after searching half the space; "full search" is the worst case of searching all of it. When an online lockout is set, online guessing is shown as a success chance, because an average time would ignore the lockout.</p>
+  <div class="card"><div id="results" class="results" aria-live="polite"></div></div>
+  <div class="card"><h3>Scenario comparison (log scale, longer bar = longer to crack)</h3><div id="chart" class="chart"></div></div>
+  <div class="card"><h3>Search timeline (offline model, simulated)</h3>
+    <p class="note">Illustrates how long a uniform search would take at your chosen offline speed. No guesses are made and nothing is attempted.</p>
+    <div class="meter"><i id="tlFill"></i></div>
+    <p class="verdict" id="tlClock">Press Play to run the illustration.</p>
+    <ul class="tips" id="tlList"></ul>
+    <button class="btn" id="tlPlay" type="button">Play</button>
+  </div>
+</section>
+
+<section id="arena" class="sec">
+  <h2>Password battle arena</h2>
+  <p class="note">Two passwords, identical assumptions (the offline speed and online rate from the Attack Lab). Both stay in browser memory only; nothing is stored or sent. Use fictional passwords, not ones you use.</p>
+  <div class="card">
+    <div class="grid3" style="grid-template-columns:repeat(2,1fr)">
+      <div><label for="pwA">Password A</label><input id="pwA" type="password" autocomplete="off" spellcheck="false" placeholder="e.g. Summer2024!"></div>
+      <div><label for="pwB">Password B</label><input id="pwB" type="password" autocomplete="off" spellcheck="false" placeholder="e.g. a fictional passphrase"></div>
+    </div>
+    <div id="arenaCmp" class="cmp" aria-live="polite"></div>
+  </div>
+  <div class="card"><h3>Attack-time comparison (log scale)</h3><div id="arenaChart" class="chart"></div>
+    <h3>Why the difference?</h3><ul class="tips" id="arenaWhy"></ul></div>
+</section>
+
+<section id="generator" class="sec">
+  <h2>Password generator</h2>
+  <div class="card">
+    <div class="grid3">
+      <div><label for="gMode">Type</label><select id="gMode"><option value="pw">Random password</option><option value="phrase">Passphrase</option></select></div>
+      <div><label for="gLen">Length: <b id="gLenVal">16 characters</b></label><input id="gLen" type="range" min="8" max="64" value="16"></div>
+      <fieldset id="gSets"><legend>Characters</legend>
+        <label><input id="gl" type="checkbox" checked> a-z</label>
+        <label><input id="gu" type="checkbox" checked> A-Z</label>
+        <label><input id="gd" type="checkbox" checked> 0-9</label>
+        <label><input id="gs" type="checkbox" checked> symbols</label></fieldset>
+    </div>
+    <output id="gOut" class="gen" aria-live="polite">Press “Generate”</output>
+    <div class="row">
+      <button class="btn primary" id="gRegen" type="button">Generate</button>
+      <button class="btn" id="gCopy" type="button">Copy</button>
+      <button class="btn" id="gUse" type="button">Analyze this</button>
+    </div>
+    <p class="note" id="gInfo"></p>
+    <p class="note">Uses the Web Crypto API with rejection sampling to avoid modulo bias. Nothing is saved. Passphrases draw from a built-in word list (the entropy line above shows the exact figure), so use more words than you would with a large list such as the EFF diceware list (12.9 bits per word). A pattern like “Word123!” is predictable; truly random choices are not.</p>
+  </div>
+</section>
+
+<section id="quiz" class="sec">
+  <h2>Challenge mode</h2>
+  <div class="card" id="quizBox"></div>
+</section>
+
+<section id="guide" class="sec">
+  <h2>Security guide</h2>
+  <div class="card guide">
+    <details><summary>What is password entropy?</summary><p>A measure of how unpredictable a password is, in bits. Each bit doubles the guesses needed. It describes how the password was chosen, not just how it looks.</p></details>
+    <details><summary>Brute-force vs dictionary attacks</summary><p>Brute force tries every combination. Dictionary attacks try likely passwords first: common words, names, leaked passwords and tweaks like “P@ssw0rd”. Predictable passwords fall far sooner than the brute-force math suggests.</p></details>
+    <details><summary>Online vs offline attacks</summary><p>Online attacks guess against a live login and are slowed by rate limits and lockouts. Offline attacks start from a stolen hash database and run as fast as the attacker’s hardware allows.</p></details>
+    <details><summary>Hashing and salting</summary><p>Sites should store a slow, salted hash (e.g. Argon2id, bcrypt, scrypt), not the password. A unique random salt per user stops precomputed tables and makes each account crack separately. Slow hashes cut offline guess speed dramatically.</p></details>
+    <details><summary>Why rate limiting matters</summary><p>It caps how many guesses an attacker can make online, turning a quick attack into one that is impractical, especially with lockouts and multifactor authentication.</p></details>
+    <details><summary>Reuse and credential stuffing</summary><p>Attackers take leaked username-password pairs and try them on other services. This is not brute force: one reused password unlocks many accounts, however strong it is.</p></details>
+    <details><summary>Why long, unique passwords</summary><p>Length multiplies the search space; uniqueness contains the damage of a breach. Use a password manager with generated passwords or long random passphrases, and turn on multifactor authentication. Symbol substitutions alone do not make a predictable password secure.</p></details>
+  </div>
+</section>
+</main>
+
+<footer class="foot">
+  <b>CRYPTIQ</b> — Interactive Password Cracking &amp; Entropy Simulator
+  <p>Educational disclaimer: all figures are simplified estimates. No password is uncrackable, and results do not guarantee safety.</p>
+  <p>Privacy: passwords stay in browser memory and are never stored, logged or sent. The only network request is the optional breach check, which sends a 5-character hash prefix.</p>
+  <p><a href="#analyzer">Analyzer</a> · <a href="#lab">Attack Lab</a> · <a href="#generator">Generator</a> · <a href="#guide">Guide</a></p>
+</footer>
+<script src="script.js"></script>
+</body>
+</html>
